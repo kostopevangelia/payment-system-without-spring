@@ -1,0 +1,11 @@
+{
+  "cardNumber": "4242424242424242",
+  "iban": null,
+  "transactionId": null,
+  "amount": 100,
+  "currency": "U",
+  "timestamp": "2025-03-04T19:11:52",
+  "paymentType": "CARD",
+  "transactionType": "PAYMENT",
+  "userId": "USER987"
+}

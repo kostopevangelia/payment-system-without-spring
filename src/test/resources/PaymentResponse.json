@@ -1,0 +1,14 @@
+{
+  "code": 200,
+  "message": "Intent Created",
+  "paymentInfo": {
+    "paymentType": "card",
+    "fraudScore": 0.0,
+    "fraud": false,
+    "client_secret": "pi_3RCi0RBTS3g9NVDl00iN0cqD_secret_eLxKqeiRyQ36R1WyX1k2W9OR4",
+    "transactionId": "txn18722df50404612ca60e3f778aade85559c23",
+    "amount": "100",
+    "currency": "usd",
+    "status": "succeeded"
+  }
+}
