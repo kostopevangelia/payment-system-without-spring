@@ -65,5 +65,18 @@ jobs:
             -baselineOnMigrate=true \
             migrate
 
+      - name: Check database schema
+        run: |
+          docker run --rm \
+            --network host \
+            mysql:8 \
+            mysql \
+            -h127.0.0.1 \
+            -P3307 \
+            -uroot \
+            -p"${{ secrets.MYSQL_ROOT_PASSWORD }}" \
+            payment_service \
+            -e "DESCRIBE transactions;"
+
       - name: Build and test
         run: mvn clean install
