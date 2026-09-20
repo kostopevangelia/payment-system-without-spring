@@ -18,7 +18,6 @@ public class ApplicationConfig {
     private final String fraudApiSecretKey;
 
 
-
     public ApplicationConfig(String databaseUrl,
                              String databaseUsername,
                              String databasePassword,
@@ -83,19 +82,35 @@ public class ApplicationConfig {
             }
 
             properties.load(input);
+
         } catch (IOException e) {
             throw new IllegalStateException("Failed to load application.properties", e);
         }
 
         return new ApplicationConfig(
-                properties.getProperty("spring.datasource.jdbcUrl"),
-                properties.getProperty("spring.datasource.username"),
-                properties.getProperty("spring.datasource.password"),
-                properties.getProperty("stripe.secret.key"),
-                properties.getProperty("stripe.init.url"),
-                properties.getProperty("stripe.confirm.url"),
-                properties.getProperty("fraud.api.url"),
-                properties.getProperty("fraud.api.secret.key")
+                getProperty("SPRING_DATASOURCE_URL", properties, "spring.datasource.jdbcUrl"),
+                getProperty("SPRING_DATASOURCE_USERNAME", properties, "spring.datasource.username"),
+                getProperty("SPRING_DATASOURCE_PASSWORD", properties, "spring.datasource.password"),
+                getProperty("STRIPE_SECRET_KEY", properties, "stripe.secret.key"),
+                getProperty("STRIPE_INIT_URL", properties, "stripe.init.url"),
+                getProperty("STRIPE_CONFIRM_URL", properties, "stripe.confirm.url"),
+                getProperty("FRAUD_API_URL", properties, "fraud.api.url"),
+                getProperty("FRAUD_API_SECRET_KEY", properties, "fraud.api.secret.key")
         );
+
+    }
+
+    private static String getProperty(
+            String environmentVariable,
+            Properties properties,
+            String propertyName) {
+
+        String value = System.getenv(environmentVariable);
+
+        if (value != null && !value.isBlank()) {
+            return value;
+        }
+
+        return properties.getProperty(propertyName);
     }
 }
