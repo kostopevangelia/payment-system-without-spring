@@ -25,10 +25,10 @@ public class StripeIntegration {
 
     private final RestTemplate restTemplateStripe;
 
-    public StripeIntegration(@Value("${stripe.secret.key}") String stripeSecretKey,
-                             @Value("${stripe.init.url}") String stripeInitUrl,
-                             @Value("${stripe.confirm.url}") String stripeConfirmUrl,
-                             @Qualifier("restTemplateStripe") RestTemplate restTemplateStripe) {
+    public StripeIntegration(String stripeSecretKey,
+                             String stripeInitUrl,
+                             String stripeConfirmUrl,
+                             RestTemplate restTemplateStripe) {
         this.stripeSecretKey = stripeSecretKey;
         this.stripeInitUrl = stripeInitUrl;
         this.stripeConfirmUrl = stripeConfirmUrl;
