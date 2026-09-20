@@ -14,8 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
-@Service
 @Slf4j
 public class PaymentService {
 
@@ -23,8 +23,10 @@ public class PaymentService {
     private final PaymentsDBAccess paymentsDBAccess;
     private final FraudService fraudService;
 
-    @Autowired
-    public PaymentService(StripeIntegration stripe, PaymentsDBAccess paymentsDBAccess, FraudService fraudService) {
+    public PaymentService(StripeIntegration stripe,
+                          PaymentsDBAccess paymentsDBAccess,
+                          FraudService fraudService) {
+        //this.stripe = new StripeIntegration(stripeSecretKey, stripeInitUrl, stripeConfirmUrl, restTemplateStripe);
         this.stripe = stripe;
         this.paymentsDBAccess = paymentsDBAccess;
         this.fraudService = fraudService;

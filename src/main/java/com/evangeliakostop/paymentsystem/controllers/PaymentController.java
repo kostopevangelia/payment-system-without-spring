@@ -1,10 +1,13 @@
 package com.evangeliakostop.paymentsystem.controllers;
 
-import com.evangeliakostop.paymentsystem.common.utils.CommonService;
 import com.evangeliakostop.paymentsystem.common.utils.UniqueIdGenerator;
 import com.evangeliakostop.paymentsystem.config.PaymentHttpStatusResolver;
+import com.evangeliakostop.paymentsystem.config.framework.PaymentSystemContainer;
+import com.evangeliakostop.paymentsystem.integrations.stripe.StripeIntegration;
 import com.evangeliakostop.paymentsystem.models.PaymentRequest;
 import com.evangeliakostop.paymentsystem.models.PaymentResponse;
+import com.evangeliakostop.paymentsystem.persistence.PaymentsDBAccess;
+import com.evangeliakostop.paymentsystem.services.FraudService;
 import com.evangeliakostop.paymentsystem.services.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
 @RestController
 @RequestMapping("payments")
@@ -33,9 +37,17 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final PaymentHttpStatusResolver statusResolver;
 
+    PaymentSystemContainer container;
+
     @Autowired
-    public PaymentController(PaymentService paymentService, CommonService commonService, PaymentHttpStatusResolver statusResolver) {
-        this.paymentService = paymentService;
+    public PaymentController(StripeIntegration stripe,
+                             PaymentsDBAccess paymentsDBAccess,
+                             FraudService fraudService,
+                             PaymentHttpStatusResolver statusResolver) {
+
+        this.container = new PaymentSystemContainer(stripe, paymentsDBAccess, fraudService);
+        this.paymentService = container.paymentService();
+
         this.statusResolver = statusResolver;
     }
 
