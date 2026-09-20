@@ -1,16 +1,11 @@
 package com.evangeliakostop.paymentsystem;
 
-import com.evangeliakostop.paymentsystem.controllers.PaymentController;
 import com.evangeliakostop.paymentsystem.dto.PaymentIntentDto;
 import com.evangeliakostop.paymentsystem.models.PaymentRequest;
 import com.evangeliakostop.paymentsystem.models.PaymentResponse;
-import com.evangeliakostop.paymentsystem.services.FraudService;
-import com.evangeliakostop.paymentsystem.services.PaymentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -30,7 +25,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "stripe.secret.key=test-stripe-secret",
+        "stripe.init.url=http://test/stripe/init",
+        "stripe.confirm.url=http://test/stripe/confirm",
+        "fraud.api.url=http://localhost:8000/predict-fraud",
+        "fraud.api.secret.key=test-fraud-secret"
+})
 @AutoConfigureMockMvc
 @ExtendWith(MockitoExtension.class)
 public class ControllerIT {
