@@ -15,8 +15,6 @@ jobs:
       SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3307/payment_service
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-      STRIPE_SECRET_KEY: test-stripe-secret
-      STRIPE_INIT_URL: http://test/stripe/init
       STRIPE_CONFIRM_URL: http://test/stripe/confirm
       FRAUD_API_URL: http://localhost:8000/predict-fraud
       FRAUD_API_SECRET_KEY: test-fraud-secret
