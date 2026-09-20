@@ -22,6 +22,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.io.IOException;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
@@ -47,7 +49,7 @@ class PaymentControllerTest {
     private PaymentController controller;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws IOException {
         objectMapper = JsonMapper.builder()
                 .build();
 
@@ -55,7 +57,6 @@ class PaymentControllerTest {
                 .thenReturn(paymentService);
 
         controller = new PaymentController(
-                applicationContainer,
                 paymentHttpStatusResolver
         );
     }

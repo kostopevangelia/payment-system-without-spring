@@ -76,7 +76,7 @@ public class ApplicationConfig {
 
         try (InputStream input = ApplicationConfig.class
                 .getClassLoader()
-                .getResourceAsStream("applcation.properties")) {
+                .getResourceAsStream("application.properties")) {
 
             if (input == null) {
                 throw new IllegalStateException("application.properties not found");

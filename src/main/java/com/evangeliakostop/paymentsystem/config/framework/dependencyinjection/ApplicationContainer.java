@@ -4,42 +4,35 @@ import com.evangeliakostop.paymentsystem.config.framework.config.ApplicationConf
 import com.evangeliakostop.paymentsystem.config.jdbc.JdbcTemplateConfig;
 import com.evangeliakostop.paymentsystem.persistence.PaymentsDBAccess;
 import com.evangeliakostop.paymentsystem.services.PaymentService;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 
-@Component
 public class ApplicationContainer {
 
     PaymentSystemContainer paymentSystemContainer;
     StripeSystemContainer stripeSystemContainer;
     FraudSystemContainer fraudSystemContainer;
 
-    public ApplicationContainer(@Value("${stripe.secret.key}") String stripeSecretKey,
-                                @Value("${stripe.init.url}") String stripeInitUrl,
-                                @Value("${stripe.confirm.url}") String stripeConfirmUrl,
-                                @Qualifier("restTemplateStripe") RestTemplate restTemplateStripe,
-                                @Value("${fraud.api.url}") String fraudApiUrl,
-                                @Value("${fraud.api.secret.key}") String fraudSecretKey,
-                                RestTemplate restTemplateFraudApi) throws IOException {
+    public ApplicationContainer() throws IOException {
 
         ApplicationConfig config = ApplicationConfig.load();
         JdbcTemplate jdbcTemplate = JdbcTemplateConfig.createJdbcTemplate(config);
         PaymentsDBAccess paymentsDBAccess = new PaymentsDBAccess(jdbcTemplate);
 
+        RestTemplate restTemplateStripe = new RestTemplate();
+        RestTemplate restTemplateFraudApi = new RestTemplate();
+
         StripeSystemContainer stripeContainer = new StripeSystemContainer(
-                stripeSecretKey,
-                stripeInitUrl,
-                stripeConfirmUrl,
+                config.getStripeSecretKey(),
+                config.getStripeInitUrl(),
+                config.getStripeConfirmUrl(),
                 restTemplateStripe);
 
         FraudIntegrationContainer fraudIntegrationContainer = new FraudIntegrationContainer(
-                fraudApiUrl,
-                fraudSecretKey,
+                config.getFraudApiUrl(),
+                config.getFraudApiSecretKey(),
                 restTemplateFraudApi);
 
         FraudSystemContainer fraudContainer = new FraudSystemContainer(

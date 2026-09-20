@@ -15,13 +15,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.io.IOException;
 
 @RestController
 @RequestMapping("payments")
@@ -33,13 +34,10 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final PaymentHttpStatusResolver statusResolver;
 
-    ApplicationContainer applicationContainer;
 
-    @Autowired
-    public PaymentController(ApplicationContainer applicationContainer,
-                             PaymentHttpStatusResolver statusResolver) {
+    public PaymentController(PaymentHttpStatusResolver statusResolver) throws IOException {
 
-        this.applicationContainer = applicationContainer;
+        ApplicationContainer applicationContainer = new ApplicationContainer();
         this.paymentService = applicationContainer.paymentService();
         this.statusResolver = statusResolver;
     }
