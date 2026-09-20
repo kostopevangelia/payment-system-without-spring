@@ -1,112 +1,175 @@
 package com.evangeliakostop.paymentsystem;
 
-import com.evangeliakostop.paymentsystem.dto.PaymentIntentDto;
 import com.evangeliakostop.paymentsystem.models.PaymentRequest;
 import com.evangeliakostop.paymentsystem.models.PaymentResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpServer;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.*;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = {
-        "stripe.secret.key=test-stripe-secret",
-        "stripe.init.url=http://test/stripe/init",
-        "stripe.confirm.url=http://test/stripe/confirm",
-        "fraud.api.url=http://localhost:8000/predict-fraud",
-        "fraud.api.secret.key=test-fraud-secret"
-})
+@SpringBootTest
 @AutoConfigureMockMvc
-@ExtendWith(MockitoExtension.class)
 public class ControllerIT {
 
-    @MockitoBean
-    @Qualifier("restTemplateStripe")
-    private RestTemplate restTemplateStripe;
+    private static final int STRIPE_PORT = 18080;
+
+    private static HttpServer stripeServer;
+
     @Autowired
     private MockMvc mockMvc;
+
     @Autowired
     private ObjectMapper objectMapper;
 
+    @BeforeAll
+    static void startStripeServer() throws IOException {
 
+        stripeServer = HttpServer.create(
+                new InetSocketAddress("localhost", STRIPE_PORT),
+                0
+        );
+
+        stripeServer.createContext("/stripe/init", exchange -> {
+
+            String response = """
+                    {
+                      "id": "pi_test_123",
+                      "amount": 100,
+                      "currency": "USD",
+                      "status": "succeeded"
+                    }
+                    """;
+
+            sendResponse(exchange, 200, response);
+        });
+
+        stripeServer.createContext("/stripe/confirm", exchange -> {
+
+            String response = """
+                    {
+                      "id": "pi_test_123",
+                      "amount": 100,
+                      "currency": "USD",
+                      "status": "succeeded"
+                    }
+                    """;
+
+            sendResponse(exchange, 200, response);
+        });
+
+        stripeServer.start();
+    }
+
+    @AfterAll
+    static void stopStripeServer() {
+
+        if (stripeServer != null) {
+            stripeServer.stop(0);
+        }
+    }
 
     @Test
     void completePayment_Success() throws Exception {
-        String jsonRequest = "src/test/resources/PaymentRequest.json";
-        PaymentRequest request = TestHelper.parseJsonToPaymentRequest(jsonRequest);
 
-        String jsonResponse = "src/test/resources/PaymentResponse.json";
-        PaymentResponse mockedResponse = TestHelper.createPaymentResponseFromJson(jsonResponse);
+        String jsonRequest =
+                "src/test/resources/PaymentRequest.json";
 
-        PaymentIntentDto paymentIntent = new PaymentIntentDto();
-        paymentIntent.setId("pi_test_123");
-        paymentIntent.setAmount(Math.toIntExact(request.getAmount()));
-        paymentIntent.setCurrency(request.getCurrency());
-        paymentIntent.setStatus("succeeded");
+        PaymentRequest request =
+                TestHelper.parseJsonToPaymentRequest(jsonRequest);
 
-        when(restTemplateStripe.exchange(
-                anyString(),
-                eq(HttpMethod.POST),
-                any(HttpEntity.class),
-                eq(PaymentIntentDto.class)
-        )).thenReturn(new ResponseEntity<>(paymentIntent, HttpStatus.OK));
+        String jsonResponse =
+                "src/test/resources/PaymentResponse.json";
 
-        MvcResult result = mockMvc.perform(post("/payments/init")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        PaymentResponse expectedResponse =
+                TestHelper.createPaymentResponseFromJson(jsonResponse);
+
+        String response = mockMvc.perform(
+                        post("/payments/init")
+                                .accept(MediaType.APPLICATION_JSON)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
                 .andExpect(status().isOk())
-                .andReturn();
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
 
-        PaymentResponse response = objectMapper.readValue(result.getResponse().getContentAsString(), PaymentResponse.class);
+        PaymentResponse actualResponse =
+                objectMapper.readValue(response, PaymentResponse.class);
 
-        assertEquals(mockedResponse.getPaymentInfo().getAmount(), response.getPaymentInfo().getAmount());
+        assertEquals(
+                expectedResponse.getPaymentInfo().getAmount(),
+                actualResponse.getPaymentInfo().getAmount()
+        );
     }
 
     @Test
     void completePayment_InitException() throws Exception {
-        String jsonRequest = "src/test/resources/PaymentRequest_Invalid.json";
-        PaymentRequest request = TestHelper.parseJsonToPaymentRequest(jsonRequest);
 
-        mockMvc.perform(post("/payments/init")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isInternalServerError())
-                .andReturn();
+        String jsonRequest =
+                "src/test/resources/PaymentRequest_Invalid.json";
 
+        PaymentRequest request =
+                TestHelper.parseJsonToPaymentRequest(jsonRequest);
+
+        mockMvc.perform(
+                        post("/payments/init")
+                                .accept(MediaType.APPLICATION_JSON)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isInternalServerError());
     }
 
     @Test
     void completePayment_ConfirmException() throws Exception {
-        String jsonRequest = "src/test/resources/PaymentRequest_Invalid.json";
-        PaymentRequest request = TestHelper.parseJsonToPaymentRequest(jsonRequest);
 
-        when(restTemplateStripe.exchange(anyString(), eq(HttpMethod.POST), any(HttpEntity.class), eq(PaymentIntentDto.class), eq(HashMap.class)))
-                .thenThrow(RuntimeException.class);
+        String jsonRequest =
+                "src/test/resources/PaymentRequest_Invalid.json";
 
-        mockMvc.perform(post("/payments/init")
-                        .accept(MediaType.APPLICATION_JSON)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isInternalServerError())
-                .andReturn();
+        PaymentRequest request =
+                TestHelper.parseJsonToPaymentRequest(jsonRequest);
 
+        mockMvc.perform(
+                        post("/payments/init")
+                                .accept(MediaType.APPLICATION_JSON)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isInternalServerError());
+    }
+
+    private static void sendResponse(
+            com.sun.net.httpserver.HttpExchange exchange,
+            int status,
+            String response) throws IOException {
+
+        byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
+
+        exchange.getResponseHeaders().set(
+                "Content-Type",
+                "application/json"
+        );
+
+        exchange.sendResponseHeaders(status, bytes.length);
+
+        try (OutputStream outputStream = exchange.getResponseBody()) {
+            outputStream.write(bytes);
+        }
     }
 }

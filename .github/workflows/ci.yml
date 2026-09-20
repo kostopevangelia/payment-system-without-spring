@@ -12,7 +12,7 @@ jobs:
 
     env:
       MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-      SPRING_DATASOURCE_JDBCURL: jdbc:mysql://localhost:3307/payment_service
+      SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3307/payment_service
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
       STRIPE_SECRET_KEY: test-stripe-secret
