@@ -1,11 +1,16 @@
 package com.evangeliakostop.paymentsystem.config.framework.dependencyinjection;
 
+import com.evangeliakostop.paymentsystem.config.framework.config.ApplicationConfig;
+import com.evangeliakostop.paymentsystem.config.jdbc.JdbcTemplateConfig;
 import com.evangeliakostop.paymentsystem.persistence.PaymentsDBAccess;
 import com.evangeliakostop.paymentsystem.services.PaymentService;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+
+import java.io.IOException;
 
 @Component
 public class ApplicationContainer {
@@ -20,8 +25,11 @@ public class ApplicationContainer {
                                 @Qualifier("restTemplateStripe") RestTemplate restTemplateStripe,
                                 @Value("${fraud.api.url}") String fraudApiUrl,
                                 @Value("${fraud.api.secret.key}") String fraudSecretKey,
-                                RestTemplate restTemplateFraudApi,
-                                PaymentsDBAccess paymentsDBAccess) {
+                                RestTemplate restTemplateFraudApi) throws IOException {
+
+        ApplicationConfig config = ApplicationConfig.load();
+        JdbcTemplate jdbcTemplate = JdbcTemplateConfig.createJdbcTemplate(config);
+        PaymentsDBAccess paymentsDBAccess = new PaymentsDBAccess(jdbcTemplate);
 
         StripeSystemContainer stripeContainer = new StripeSystemContainer(
                 stripeSecretKey,

@@ -10,14 +10,11 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-@Repository
 @Slf4j
 public class PaymentsDBAccess {
 
     private final JdbcTemplate paymentsDbTemplate;
 
-
-    @Autowired
     public PaymentsDBAccess(JdbcTemplate paymentsDbTemplate) {
         this.paymentsDbTemplate = paymentsDbTemplate;
     }
