@@ -56,9 +56,7 @@ class PaymentControllerTest {
         when(applicationContainer.paymentService())
                 .thenReturn(paymentService);
 
-        controller = new PaymentController(
-                paymentHttpStatusResolver
-        );
+        controller = new PaymentController();
     }
 
     @Test

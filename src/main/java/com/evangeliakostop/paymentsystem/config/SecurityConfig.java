@@ -19,11 +19,6 @@ import java.util.Collections;
 public class SecurityConfig {
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(); // This creates a PasswordEncoder bean using BCryptPasswordEncoder, which is used to encode passwords
-    }
-
-    @Bean
     public SecurityFilterChain configure(HttpSecurity http) throws Exception {
 
         CorsConfigurationSource configurationSource = request -> {

@@ -5,7 +5,6 @@ import com.evangeliakostop.paymentsystem.models.PaymentResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
-@Component
 public class PaymentHttpStatusResolver {
     public HttpStatus resolve(PaymentResponse r) {
         if (r == null || r.getPaymentInfo() == null) return HttpStatus.INTERNAL_SERVER_ERROR;

@@ -17,8 +17,8 @@ public class FraudApiIntegration {
     private final String fraudSecretKey;
     private final RestTemplate restTemplateFraudApi;
 
-    public FraudApiIntegration(@Value("${fraud.api.url}") String fraudApiUrl,
-                               @Value("${fraud.api.secret.key}") String fraudSecretKey,
+    public FraudApiIntegration(String fraudApiUrl,
+                               String fraudSecretKey,
                                RestTemplate restTemplateFraudApi) {
         this.fraudApiUrl = fraudApiUrl;
         this.fraudSecretKey = fraudSecretKey;

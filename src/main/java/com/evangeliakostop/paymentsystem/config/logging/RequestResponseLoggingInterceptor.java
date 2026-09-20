@@ -15,8 +15,6 @@ import org.springframework.web.util.WebUtils;
 import java.io.IOException;
 import java.util.Enumeration;
 
-
-@Component
 public class RequestResponseLoggingInterceptor implements HandlerInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(RequestResponseLoggingInterceptor.class);

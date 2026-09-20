@@ -35,11 +35,11 @@ public class PaymentController {
     private final PaymentHttpStatusResolver statusResolver;
 
 
-    public PaymentController(PaymentHttpStatusResolver statusResolver) throws IOException {
+    public PaymentController() throws IOException {
 
         ApplicationContainer applicationContainer = new ApplicationContainer();
         this.paymentService = applicationContainer.paymentService();
-        this.statusResolver = statusResolver;
+        this.statusResolver = new PaymentHttpStatusResolver();
     }
 
     @Operation(summary = "Init payment")
