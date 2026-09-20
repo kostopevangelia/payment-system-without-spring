@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -28,22 +29,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @Slf4j
 @MockitoSettings(strictness = Strictness.LENIENT)
 @ExtendWith(MockitoExtension.class)
 class PaymentControllerTest {
 
-    @Mock private ApplicationContainer applicationContainer;
+    @Mock private PaymentService paymentService;
 
-    @Mock
-    private PaymentHttpStatusResolver paymentHttpStatusResolver;
-
-    @Mock
-    private PaymentService paymentService;
-
-    @Autowired
     private ObjectMapper objectMapper;
 
     private PaymentController controller;
@@ -52,11 +46,6 @@ class PaymentControllerTest {
     void setUp() throws IOException {
         objectMapper = JsonMapper.builder()
                 .build();
-
-        when(applicationContainer.paymentService())
-                .thenReturn(paymentService);
-
-        controller = new PaymentController();
     }
 
     @Test
@@ -67,27 +56,34 @@ class PaymentControllerTest {
         String jsonResponse = "src/test/resources/PaymentResponse.json";
         PaymentResponse mockedResponse = TestHelper.createPaymentResponseFromJson(jsonResponse);
 
-        String jsonPaymentIntent = "src/test/resources/PaymentIntentDTO.json";
-        PaymentIntentDto paymentIntentDto = TestHelper.createPaymentIntentDTOFromJson(jsonPaymentIntent);
-
-        String jsonPaymentIntentConfirmed = "src/test/resources/StripeResponse_Confirm.json";
-        PaymentIntentDto paymentIntentConfirmed = TestHelper.createPaymentIntentDTOFromJson(jsonPaymentIntentConfirmed);
-
         String jsonPaymentResponse = "src/test/resources/PaymentResponse.json";
         PaymentResponse paymentResponse = TestHelper.createPaymentResponseFromJson(jsonPaymentResponse);
 
-        when(paymentService.initiatePayment(any(), anyString())).thenReturn(paymentResponse);
-        when(paymentHttpStatusResolver.resolve(any(PaymentResponse.class)))
-                .thenReturn(HttpStatus.OK);
+        when(paymentService.initiatePayment(any(), anyString()))
+                .thenReturn(paymentResponse);
 
-        ResponseEntity<PaymentResponse> response = controller.initPayment(request);
+        try(MockedConstruction<ApplicationContainer> ignored =
+                mockConstruction(
+                        ApplicationContainer.class,
+                        (mock, context) ->
+                                when(mock.paymentService()).thenReturn(paymentService));
 
-        String json = objectMapper.writeValueAsString(response);
-        log.info("Response: {}", json);
+            MockedConstruction<PaymentHttpStatusResolver> ignoredResolver =
+                    mockConstruction(
+                            PaymentHttpStatusResolver.class,
+                            (mock, context) ->
+                                    when(mock.resolve(any(PaymentResponse.class)))
+                                            .thenReturn(HttpStatus.OK))) {
 
-        assertNotNull(response.getBody());
-        assertEquals(mockedResponse.getPaymentInfo().getAmount(), response.getBody().getPaymentInfo().getAmount());
+            PaymentController controller = new PaymentController();
+            ResponseEntity<PaymentResponse> response = controller.initPayment(request);
 
+            String json = objectMapper.writeValueAsString(response);
+            log.info("Response: {}", json);
+
+            assertNotNull(response.getBody());
+            assertEquals(mockedResponse.getPaymentInfo().getAmount(), response.getBody().getPaymentInfo().getAmount());
+        }
     }
 
 
