@@ -11,10 +11,7 @@ import com.evangeliakostop.paymentsystem.models.PaymentRequest;
 import com.evangeliakostop.paymentsystem.models.PaymentResponse;
 import com.evangeliakostop.paymentsystem.persistence.PaymentsDBAccess;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 @Slf4j
 public class PaymentService {
@@ -26,7 +23,6 @@ public class PaymentService {
     public PaymentService(StripeIntegration stripe,
                           PaymentsDBAccess paymentsDBAccess,
                           FraudService fraudService) {
-        //this.stripe = new StripeIntegration(stripeSecretKey, stripeInitUrl, stripeConfirmUrl, restTemplateStripe);
         this.stripe = stripe;
         this.paymentsDBAccess = paymentsDBAccess;
         this.fraudService = fraudService;
