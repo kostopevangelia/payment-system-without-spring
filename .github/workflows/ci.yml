@@ -42,5 +42,4 @@ jobs:
         run: docker run -d --name fraud-detection -p 8000:8000 fraud-detection
 
       - name: Build payment-system-without-spring
-        working-directory: payment-system-without-spring
         run: mvn clean install
