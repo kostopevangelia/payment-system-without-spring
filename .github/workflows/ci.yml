@@ -12,7 +12,7 @@ jobs:
 
     env:
       MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-      SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3307/payment_service
+      SPRING_DATASOURCE_JDBCURL: jdbc:mysql://localhost:3307/payment_service
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
       STRIPE_SECRET_KEY: test-stripe-secret
@@ -51,6 +51,32 @@ jobs:
 
       - name: Start fraud-detection
         run: docker run -d --name fraud-detection -p 8000:8000 fraud-detection
+
+      - name: Run database migrations
+        run: |
+          docker run --rm \
+            --network host \
+            -v "${{ github.workspace }}/db/migrations:/flyway/sql:ro" \
+            flyway/flyway:10-alpine \
+            -url="jdbc:mysql://localhost:3307/payment_service?allowPublicKeyRetrieval=true&useSSL=false" \
+            -user="root" \
+            -password="${{ secrets.MYSQL_ROOT_PASSWORD }}" \
+            -locations="filesystem:/flyway/sql" \
+            -baselineOnMigrate=true \
+            migrate
+
+      - name: Check database schema
+        run: |
+          docker run --rm \
+            --network host \
+            mysql:8 \
+            mysql \
+            -h127.0.0.1 \
+            -P3307 \
+            -uroot \
+            -p"${{ secrets.MYSQL_ROOT_PASSWORD }}" \
+            payment_service \
+            -e "DESCRIBE transactions;"
 
       - name: Build and test
         run: mvn clean install
