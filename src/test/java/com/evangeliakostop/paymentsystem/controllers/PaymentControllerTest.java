@@ -2,12 +2,10 @@ package com.evangeliakostop.paymentsystem.controllers;
 
 import com.evangeliakostop.paymentsystem.TestHelper;
 import com.evangeliakostop.paymentsystem.config.PaymentHttpStatusResolver;
+import com.evangeliakostop.paymentsystem.config.framework.dependencyinjection.ApplicationContainer;
 import com.evangeliakostop.paymentsystem.dto.PaymentIntentDto;
-import com.evangeliakostop.paymentsystem.integrations.stripe.StripeIntegration;
-import com.evangeliakostop.paymentsystem.models.FraudPrediction;
 import com.evangeliakostop.paymentsystem.models.PaymentRequest;
 import com.evangeliakostop.paymentsystem.models.PaymentResponse;
-import com.evangeliakostop.paymentsystem.services.FraudService;
 import com.evangeliakostop.paymentsystem.services.PaymentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
@@ -35,25 +33,31 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class PaymentControllerTest {
 
-    @Mock
-    private PaymentService paymentService;
-    @Mock
-    private FraudService fraudService;
-    @Mock
-    private StripeIntegration stripe;
+    @Mock private ApplicationContainer applicationContainer;
+
     @Mock
     private PaymentHttpStatusResolver paymentHttpStatusResolver;
+
+    @Mock
+    private PaymentService paymentService;
 
     @Autowired
     private ObjectMapper objectMapper;
 
-    @InjectMocks
     private PaymentController controller;
 
     @BeforeEach
     void setUp() {
         objectMapper = JsonMapper.builder()
                 .build();
+
+        when(applicationContainer.paymentService())
+                .thenReturn(paymentService);
+
+        controller = new PaymentController(
+                applicationContainer,
+                paymentHttpStatusResolver
+        );
     }
 
     @Test
@@ -72,10 +76,6 @@ class PaymentControllerTest {
 
         String jsonPaymentResponse = "src/test/resources/PaymentResponse.json";
         PaymentResponse paymentResponse = TestHelper.createPaymentResponseFromJson(jsonPaymentResponse);
-
-        when(stripe.initPayment(any(), anyString())).thenReturn(paymentIntentDto);
-        when(fraudService.getFraudScore(any(), anyString())).thenReturn(FraudPrediction.builder().isFraud(false).fraudScore(1.2).build());
-        when(stripe.confirmIntent(any())).thenReturn(paymentIntentConfirmed);
 
         when(paymentService.initiatePayment(any(), anyString())).thenReturn(paymentResponse);
         when(paymentHttpStatusResolver.resolve(any(PaymentResponse.class)))
