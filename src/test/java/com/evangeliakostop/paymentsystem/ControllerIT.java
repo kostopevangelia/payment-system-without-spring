@@ -1,6 +1,5 @@
 package com.evangeliakostop.paymentsystem;
 
-import com.evangeliakostop.paymentsystem.common.utils.CommonService;
 import com.evangeliakostop.paymentsystem.controllers.PaymentController;
 import com.evangeliakostop.paymentsystem.dto.PaymentIntentDto;
 import com.evangeliakostop.paymentsystem.models.PaymentRequest;
@@ -36,23 +35,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(MockitoExtension.class)
 public class ControllerIT {
 
-    @Mock
-    private RestTemplate restTemplateFraudApi;
     @MockitoBean
     @Qualifier("restTemplateStripe")
     private RestTemplate restTemplateStripe;
     @Autowired
     private MockMvc mockMvc;
-    @Mock
-    private CommonService commonService;
-    @Mock
-    private PaymentService paymentService;
-    @Mock
-    private FraudService fraudService;
     @Autowired
     private ObjectMapper objectMapper;
-    @InjectMocks
-    private PaymentController controller;
+
 
 
     @Test
