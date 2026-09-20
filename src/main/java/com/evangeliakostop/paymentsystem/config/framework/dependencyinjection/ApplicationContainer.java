@@ -2,8 +2,12 @@ package com.evangeliakostop.paymentsystem.config.framework.dependencyinjection;
 
 import com.evangeliakostop.paymentsystem.config.framework.config.ApplicationConfig;
 import com.evangeliakostop.paymentsystem.config.jdbc.JdbcTemplateConfig;
+import com.evangeliakostop.paymentsystem.config.rest.CorrelationIdInterceptor;
+import com.evangeliakostop.paymentsystem.config.rest.RestConfig;
 import com.evangeliakostop.paymentsystem.persistence.PaymentsDBAccess;
 import com.evangeliakostop.paymentsystem.services.PaymentService;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.client.RestTemplate;
 
@@ -21,8 +25,17 @@ public class ApplicationContainer {
         JdbcTemplate jdbcTemplate = JdbcTemplateConfig.createJdbcTemplate(config);
         PaymentsDBAccess paymentsDBAccess = new PaymentsDBAccess(jdbcTemplate);
 
-        RestTemplate restTemplateStripe = new RestTemplate();
-        RestTemplate restTemplateFraudApi = new RestTemplate();
+        CorrelationIdInterceptor correlationIdInterceptor =
+                new CorrelationIdInterceptor();
+
+        RestConfig restConfig = new RestConfig(correlationIdInterceptor);
+
+        RequestConfig requestConfig = restConfig.createRequestConfig();
+        CloseableHttpClient httpClient = restConfig.createHttpClient(requestConfig);
+
+        RestTemplate restTemplateStripe = restConfig.createRestTemplateStripe(httpClient);
+
+        RestTemplate restTemplateFraudApi = restConfig.restTemplateFraudApi(httpClient);
 
         StripeSystemContainer stripeContainer = new StripeSystemContainer(
                 config.getStripeSecretKey(),
