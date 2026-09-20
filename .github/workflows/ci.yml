@@ -10,12 +10,23 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    env:
+      MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+      SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3307/payment_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+      STRIPE_SECRET_KEY: test-stripe-secret
+      STRIPE_INIT_URL: http://test/stripe/init
+      STRIPE_CONFIRM_URL: http://test/stripe/confirm
+      FRAUD_API_URL: http://localhost:8000/predict-fraud
+      FRAUD_API_SECRET_KEY: test-fraud-secret
+
     services:
       mysql:
         image: mysql:8
         env:
           MYSQL_DATABASE: payment_service
-          MYSQL_ROOT_PASSWORD: REDACTED
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
         ports:
           - 3307:3306
 
@@ -41,5 +52,5 @@ jobs:
       - name: Start fraud-detection
         run: docker run -d --name fraud-detection -p 8000:8000 fraud-detection
 
-      - name: Build payment-system-without-spring
+      - name: Build and test
         run: mvn clean install
