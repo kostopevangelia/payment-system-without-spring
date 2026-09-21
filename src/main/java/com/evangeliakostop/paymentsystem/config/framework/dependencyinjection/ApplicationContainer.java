@@ -43,11 +43,11 @@ public class ApplicationContainer {
                 httpClient,
                 objectMapper);
 
-        RestTemplate restTemplateFraudApi = restConfig.restTemplateFraudApi(httpClient);
         FraudIntegrationContainer fraudIntegrationContainer = new FraudIntegrationContainer(
                 config.getFraudApiUrl(),
                 config.getFraudApiSecretKey(),
-                restTemplateFraudApi);
+                httpClient,
+                objectMapper);
 
         FraudSystemContainer fraudContainer = new FraudSystemContainer(
                 fraudIntegrationContainer);
