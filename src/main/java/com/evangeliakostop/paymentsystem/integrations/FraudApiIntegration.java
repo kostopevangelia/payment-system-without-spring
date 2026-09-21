@@ -4,50 +4,47 @@ import com.evangeliakostop.paymentsystem.common.utils.enumeration.ErrorLevelEnum
 import com.evangeliakostop.paymentsystem.dto.FraudApiRequest;
 import com.evangeliakostop.paymentsystem.dto.FraudDto;
 import com.evangeliakostop.paymentsystem.exceptions.CustomException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+
+import java.io.IOException;
 
 @Slf4j
 public class FraudApiIntegration {
 
     private final String fraudApiUrl;
     private final String fraudSecretKey;
-    private final RestTemplate restTemplateFraudApi;
+
+    private final CloseableHttpClient httpClient;
+    private final ObjectMapper objectMapper;
 
     public FraudApiIntegration(String fraudApiUrl,
                                String fraudSecretKey,
-                               RestTemplate restTemplateFraudApi) {
+                               CloseableHttpClient httpClient,
+                               ObjectMapper objectMapper) {
         this.fraudApiUrl = fraudApiUrl;
         this.fraudSecretKey = fraudSecretKey;
-        this.restTemplateFraudApi = restTemplateFraudApi;
+        this.httpClient = httpClient;
+        this.objectMapper = objectMapper;
     }
 
-    public FraudDto predictFraud(FraudApiRequest request, String transactionId) {
+    public FraudDto predictFraud(FraudApiRequest request, String transactionId) throws JsonProcessingException {
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        headers.set("Authorization", "Bearer " + fraudSecretKey);
-
-        HttpEntity<FraudApiRequest> entity = new HttpEntity<>(request, headers);
-
-        ResponseEntity<FraudDto> response = null;
+        HttpPost httpPost = new HttpPost(fraudApiUrl);
+        httpPost.setHeader("Authorization", "Bearer " + fraudSecretKey);
+        httpPost.setHeader("Content-Type ", ContentType.APPLICATION_FORM_URLENCODED.getMimeType());
+        httpPost.setEntity(new StringEntity(
+                        objectMapper.writeValueAsString(request),
+                        ContentType.APPLICATION_JSON));
 
         try {
-            response = restTemplateFraudApi.exchange(fraudApiUrl, HttpMethod.POST, entity, FraudDto.class);
-            if (response.getBody() != null) {
-                return response.getBody();
-            } else {
-                throw new CustomException(
-                        "Error response from fraud api:",
-                        "Response Body cannot be null",
-                        null,
-                        ErrorLevelEnum.APPLICATION_ERROR
-                );
-            }
+            return executeRequest(httpPost);
         } catch (Exception e) {
             // Handle generic exceptions
             log.error("predictFraud: FraudApi error: {}", e.getMessage());
@@ -58,5 +55,23 @@ public class FraudApiIntegration {
                     ErrorLevelEnum.APPLICATION_ERROR
             );
         }
+    }
+
+    private FraudDto executeRequest(HttpPost httpPost) throws IOException {
+        return httpClient.execute(
+                httpPost,
+                response -> {
+                    String responseBody = EntityUtils.toString(response.getEntity());
+
+                    if (responseBody == null || responseBody.isBlank()) {
+                        throw new CustomException("Error response from FraudApi: ",
+                                "Response Body cannot be null",
+                                null,
+                                ErrorLevelEnum.APPLICATION_ERROR);
+                    }
+
+                    return objectMapper.readValue(responseBody, FraudDto.class);
+                }
+        );
     }
 }

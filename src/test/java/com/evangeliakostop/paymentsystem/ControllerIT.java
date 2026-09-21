@@ -4,19 +4,22 @@ import com.evangeliakostop.paymentsystem.dto.PaymentIntentDto;
 import com.evangeliakostop.paymentsystem.models.PaymentRequest;
 import com.evangeliakostop.paymentsystem.models.PaymentResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.core5.http.io.HttpClientResponseHandler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.*;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import org.springframework.web.client.RestTemplate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -36,14 +39,14 @@ public class ControllerIT {
 
     @BeforeEach
     void resetStripeMock() {
-        reset(ControllerTestInitializer.restTemplateStripe);
+        reset(ControllerTestInitializer.httpClientStripe);
     }
 
     @Test
     void completePayment_Success() throws Exception {
 
-        RestTemplate restTemplateStripe =
-                ControllerTestInitializer.restTemplateStripe;
+        CloseableHttpClient httpClientStripe =
+                ControllerTestInitializer.httpClientStripe;
 
         PaymentRequest request =
                 TestHelper.parseJsonToPaymentRequest(
@@ -59,14 +62,10 @@ public class ControllerIT {
         paymentIntent.setCurrency(request.getCurrency());
         paymentIntent.setStatus("succeeded");
 
-        when(restTemplateStripe.exchange(
-                anyString(),
-                eq(HttpMethod.POST),
-                any(HttpEntity.class),
-                eq(PaymentIntentDto.class)
-        )).thenReturn(
-                new ResponseEntity<>(paymentIntent, HttpStatus.OK)
-        );
+        when(httpClientStripe.execute(
+                any(HttpPost.class),
+                any(HttpClientResponseHandler.class)
+        )).thenReturn(paymentIntent);
 
         MvcResult result = mockMvc.perform(
                         post("/payments/init")
@@ -92,18 +91,16 @@ public class ControllerIT {
     @Test
     void completePayment_InitException() throws Exception {
 
-        RestTemplate restTemplateStripe =
-                ControllerTestInitializer.restTemplateStripe;
+        CloseableHttpClient httpClientStripe =
+                ControllerTestInitializer.httpClientStripe;
 
         PaymentRequest request =
                 TestHelper.parseJsonToPaymentRequest(
                         "src/test/resources/PaymentRequest_Invalid.json");
 
-        when(restTemplateStripe.exchange(
-                anyString(),
-                eq(HttpMethod.POST),
-                any(HttpEntity.class),
-                eq(PaymentIntentDto.class)
+        when(httpClientStripe.execute(
+                any(HttpPost.class),
+                any(HttpClientResponseHandler.class)
         )).thenThrow(
                 new RuntimeException("Stripe init error")
         );
@@ -120,8 +117,8 @@ public class ControllerIT {
     @Test
     void completePayment_ConfirmException() throws Exception {
 
-        RestTemplate restTemplateStripe =
-                ControllerTestInitializer.restTemplateStripe;
+        CloseableHttpClient httpClientStripe =
+                ControllerTestInitializer.httpClientStripe;
 
         PaymentRequest request =
                 TestHelper.parseJsonToPaymentRequest(
@@ -133,21 +130,22 @@ public class ControllerIT {
         paymentIntent.setCurrency(request.getCurrency());
         paymentIntent.setStatus("requires_payment_method");
 
-        when(restTemplateStripe.exchange(
-                anyString(),
-                eq(HttpMethod.POST),
-                any(HttpEntity.class),
-                eq(PaymentIntentDto.class)
-        )).thenReturn(
-                new ResponseEntity<>(paymentIntent, HttpStatus.OK)
-        );
+        // Stripe init succeeds
+        when(httpClientStripe.execute(
+                argThat(httpPost ->
+                        httpPost != null && httpPost.getRequestUri()
+                                .toString()
+                                .contains("/stripe/init")),
+                any(HttpClientResponseHandler.class)
+        )).thenReturn(paymentIntent);
 
-        when(restTemplateStripe.exchange(
-                anyString(),
-                eq(HttpMethod.POST),
-                any(HttpEntity.class),
-                eq(PaymentIntentDto.class),
-                anyMap()
+        // Stripe confirm fails
+        when(httpClientStripe.execute(
+                argThat(httpPost ->
+                        httpPost != null && httpPost.getRequestUri()
+                                .toString()
+                                .contains("/stripe/confirm")),
+                any(HttpClientResponseHandler.class)
         )).thenThrow(
                 new RuntimeException("Stripe confirm error")
         );

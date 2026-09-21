@@ -32,25 +32,6 @@ public class RestConfig {
                 .build();
     }
 
-    public RestTemplate createRestTemplateStripe(final CloseableHttpClient httpClient) {
-
-        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
-        factory.setHttpClient(httpClient);
-        factory.setConnectTimeout(30000);
-
-        RestTemplateBuilder builder = new RestTemplateBuilder();
-
-        RestTemplate restTemplate = builder.customizers(new RestLoggingCustomiser(
-                                                            factory,
-                                                            correlationIdInterceptor,
-                                                            new RestInterceptor())
-                                                        ).build();
-        log.info("Generic Spring's RestTemplate Initialized");
-
-        return restTemplate;
-    }
-
-
     public RestTemplate restTemplateFraudApi(final CloseableHttpClient httpClient) {
 
         CookieStore cookieStore = new BasicCookieStore();

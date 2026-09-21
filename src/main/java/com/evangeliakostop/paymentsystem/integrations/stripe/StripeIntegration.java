@@ -4,7 +4,15 @@ import com.evangeliakostop.paymentsystem.common.utils.enumeration.ErrorLevelEnum
 import com.evangeliakostop.paymentsystem.dto.PaymentIntentDto;
 import com.evangeliakostop.paymentsystem.exceptions.CustomException;
 import com.evangeliakostop.paymentsystem.models.PaymentRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.entity.UrlEncodedFormEntity;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.NameValuePair;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.message.BasicNameValuePair;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -13,7 +21,10 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -23,16 +34,19 @@ public class StripeIntegration {
     private final String stripeInitUrl;
     private final String stripeConfirmUrl;
 
-    private final RestTemplate restTemplateStripe;
+    private final CloseableHttpClient httpClient;
+    private final ObjectMapper objectMapper;
 
     public StripeIntegration(String stripeSecretKey,
                              String stripeInitUrl,
                              String stripeConfirmUrl,
-                             RestTemplate restTemplateStripe) {
+                             CloseableHttpClient httpClient,
+                             ObjectMapper objectMapper) {
         this.stripeSecretKey = stripeSecretKey;
         this.stripeInitUrl = stripeInitUrl;
         this.stripeConfirmUrl = stripeConfirmUrl;
-        this.restTemplateStripe = restTemplateStripe;
+        this.httpClient = httpClient;
+        this.objectMapper = objectMapper;
     }
 
 
@@ -45,34 +59,24 @@ public class StripeIntegration {
      */
     public PaymentIntentDto initPayment(PaymentRequest request, String transactionId) {
 
-        MultiValueMap<String, String> requestParams = new LinkedMultiValueMap<>();
-        requestParams.add("amount", String.valueOf(request.getAmount()));
-        requestParams.add("currency", request.getCurrency());
-        requestParams.add("automatic_payment_methods[enabled]", "true");
-        requestParams.add("automatic_payment_methods[allow_redirects]", "never");
+        List<NameValuePair> requestParams = new ArrayList<>();
+        requestParams.add(new BasicNameValuePair("amount", String.valueOf(request.getAmount())));
+        requestParams.add(new BasicNameValuePair("currency", request.getCurrency()));
+        requestParams.add(new BasicNameValuePair("automatic_payment_methods[enabled]", "true"));
+        requestParams.add(new BasicNameValuePair("automatic_payment_methods[allow_redirects]", "never"));
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        headers.set("Authorization", "Bearer " + stripeSecretKey);  // Use your Stripe secret key here
-
-        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(requestParams, headers);
-        ResponseEntity<PaymentIntentDto> response;
+        HttpPost httpPost = new HttpPost(stripeInitUrl);
+        httpPost.setHeader("Authorization", "Bearer " + stripeSecretKey);
+        httpPost.setHeader("Content-Type ", ContentType.APPLICATION_FORM_URLENCODED.getMimeType());
+        httpPost.setEntity(new UrlEncodedFormEntity(requestParams));
 
         try {
-            response = restTemplateStripe.exchange(stripeInitUrl, HttpMethod.POST, entity, PaymentIntentDto.class);
-            if (response.getBody() != null) {
-                return response.getBody();
-            } else {
-                throw new CustomException(
-                        "Error response from stripe:",
-                        "Response Body cannot be null",
-                        null,
-                        ErrorLevelEnum.APPLICATION_ERROR
-                );
-            }
+            return executeRequest(httpPost);
         } catch (Exception e) {
+
             // Handle generic exceptions
             log.error("initPayment: Stripe error: {}", e.getMessage());
+
             throw new CustomException(
                     "StripeIntegration - error",
                     e.getMessage(),
@@ -91,35 +95,18 @@ public class StripeIntegration {
     public PaymentIntentDto confirmIntent(PaymentIntentDto paymentIntent) {
 
         // Prepare the request parameters
-        MultiValueMap<String, String> requestParams = new LinkedMultiValueMap<>();
-        requestParams.add("payment_method", "pm_card_visa");
+        List<NameValuePair> requestParams = new ArrayList<>();
+        requestParams.add(new BasicNameValuePair("payment_method", "pm_card_visa"));
 
         // Set the HTTP headers
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        headers.set("Authorization", "Bearer " + stripeSecretKey);
-
-        // Create the request entity
-        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(requestParams, headers);
-
-        // Prepare the URL template variables (in this case, the PaymentIntent ID)
-        Map<String, String> uriVariables = new HashMap<>();
-        uriVariables.put("id", paymentIntent.getId());  // Set the PaymentIntent ID
+        String url = stripeConfirmUrl.replace("{id}", paymentIntent.getId());
+        HttpPost httpPost = new HttpPost(url);
+        httpPost.setHeader("Authorization", "Bearer " + stripeSecretKey);
+        httpPost.setHeader("Content-Type", ContentType.APPLICATION_FORM_URLENCODED.getMimeType());
+        httpPost.setEntity(new UrlEncodedFormEntity(requestParams));
 
         try {
-            // Perform the HTTP request and exchange the response
-            ResponseEntity<PaymentIntentDto> response = restTemplateStripe.exchange(stripeConfirmUrl, HttpMethod.POST, entity, PaymentIntentDto.class, uriVariables);
-
-            if (response.getBody() != null) {
-                return response.getBody();
-            } else {
-                throw new CustomException(
-                        "Error response from stripe:",
-                        "Response Body cannot be null",
-                        null,
-                        ErrorLevelEnum.APPLICATION_ERROR
-                );
-            }
+            return executeRequest(httpPost);
         } catch (Exception e) {
             // Handle generic exceptions
             log.error("confirmIntent: Stripe error: {}", e.getMessage());
@@ -132,4 +119,23 @@ public class StripeIntegration {
         }
     }
 
+    private PaymentIntentDto executeRequest(HttpPost httpPost) throws IOException {
+
+        return httpClient.execute(
+                httpPost,
+                response -> {
+                    String responseBody = EntityUtils.toString(response.getEntity());
+
+                    if (responseBody == null || responseBody.isBlank()) {
+                        throw new CustomException("Error response from Stripe: ",
+                                "Response Body cannot be null",
+                                null,
+                                ErrorLevelEnum.APPLICATION_ERROR);
+                    }
+
+                    return objectMapper.readValue(responseBody, PaymentIntentDto.class);
+
+                }
+        );
+    }
 }

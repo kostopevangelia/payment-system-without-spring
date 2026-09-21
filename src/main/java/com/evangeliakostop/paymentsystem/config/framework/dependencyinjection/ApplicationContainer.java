@@ -6,6 +6,7 @@ import com.evangeliakostop.paymentsystem.config.rest.CorrelationIdInterceptor;
 import com.evangeliakostop.paymentsystem.config.rest.RestConfig;
 import com.evangeliakostop.paymentsystem.persistence.PaymentsDBAccess;
 import com.evangeliakostop.paymentsystem.services.PaymentService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -33,20 +34,20 @@ public class ApplicationContainer {
         RequestConfig requestConfig = restConfig.createRequestConfig();
         CloseableHttpClient httpClient = restConfig.createHttpClient(requestConfig);
 
-        RestTemplate restTemplateStripe = restConfig.createRestTemplateStripe(httpClient);
-
-        RestTemplate restTemplateFraudApi = restConfig.restTemplateFraudApi(httpClient);
+        ObjectMapper objectMapper = new ObjectMapper();
 
         StripeSystemContainer stripeContainer = new StripeSystemContainer(
                 config.getStripeSecretKey(),
                 config.getStripeInitUrl(),
                 config.getStripeConfirmUrl(),
-                restTemplateStripe);
+                httpClient,
+                objectMapper);
 
         FraudIntegrationContainer fraudIntegrationContainer = new FraudIntegrationContainer(
                 config.getFraudApiUrl(),
                 config.getFraudApiSecretKey(),
-                restTemplateFraudApi);
+                httpClient,
+                objectMapper);
 
         FraudSystemContainer fraudContainer = new FraudSystemContainer(
                 fraudIntegrationContainer);
