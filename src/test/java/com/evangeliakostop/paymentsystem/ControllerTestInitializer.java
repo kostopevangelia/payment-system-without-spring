@@ -7,6 +7,9 @@ import com.evangeliakostop.paymentsystem.models.FraudPrediction;
 import com.evangeliakostop.paymentsystem.persistence.PaymentsDBAccess;
 import com.evangeliakostop.paymentsystem.services.FraudService;
 import com.evangeliakostop.paymentsystem.services.PaymentService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -22,7 +25,9 @@ import static org.mockito.Mockito.when;
 public class ControllerTestInitializer
         implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
-    public static RestTemplate restTemplateStripe;
+    public static CloseableHttpClient httpClientStripe;
+    public static ObjectMapper objectMapper;
+
     public static PaymentsDBAccess paymentsDBAccess;
     public static FraudService fraudService;
 
@@ -37,7 +42,7 @@ public class ControllerTestInitializer
             return;
         }
 
-        restTemplateStripe = mock(RestTemplate.class);
+        httpClientStripe = mock(CloseableHttpClient.class);
         paymentsDBAccess = mock(PaymentsDBAccess.class);
         fraudService = mock(FraudService.class);
 
@@ -59,7 +64,8 @@ public class ControllerTestInitializer
                         "test-stripe-secret",
                         "http://test/stripe/init",
                         "http://test/stripe/confirm",
-                        restTemplateStripe
+                        httpClientStripe,
+                        objectMapper
                 );
 
         paymentService =
@@ -85,7 +91,8 @@ public class ControllerTestInitializer
                     applicationContainerMock.close();
                     applicationContainerMock = null;
                     paymentService = null;
-                    restTemplateStripe = null;
+                    httpClientStripe = null;
+                    objectMapper = null;
                     paymentsDBAccess = null;
                     fraudService = null;
                 }
