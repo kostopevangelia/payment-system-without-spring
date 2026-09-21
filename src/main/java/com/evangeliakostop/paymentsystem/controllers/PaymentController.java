@@ -42,6 +42,11 @@ public class PaymentController {
         this.statusResolver = new PaymentHttpStatusResolver();
     }
 
+    public PaymentController(PaymentService paymentService) {
+        this.paymentService = paymentService;
+        this.statusResolver = new PaymentHttpStatusResolver();
+    }
+
     @Operation(summary = "Init payment")
     @ApiResponses({
             @ApiResponse(
