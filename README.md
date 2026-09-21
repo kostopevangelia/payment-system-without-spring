@@ -2,55 +2,115 @@
 
 This project is an experimental version of a Spring Boot payment system where Spring features are progressively removed and replaced with explicit Java code.
 
-The goal is **not to rebuild Spring** or create a production-ready framework. The goal is to understand what Spring is actually doing behind the scenes by removing one mechanism at a time and manually reproducing its responsibilities.
+The goal is **not to rebuild Spring** or create a production-ready framework.
+
+The goal is to understand what Spring is actually doing behind the scenes by removing one mechanism at a time and replacing its responsibilities with explicit Java code.
+
+> **What happens if I remove this Spring feature? What was Spring doing for me, and what code is required to replace it?**
+
+Each change is intentionally incremental so that the effect of each Spring mechanism can be observed and understood.
+
+---
 
 ## 🎯 Purpose
 
-Instead of only using Spring features such as:
+The project started as a conventional Spring Boot application using mechanisms such as:
 
 * `@Service`
 * `@Component`
 * `@Autowired`
 * `@Value`
 * Dependency Injection
-* Application Context
+* `ApplicationContext`
+* `RestTemplate`
+* `JdbcTemplate`
 
-this project asks:
+Instead of treating these mechanisms as abstractions that simply "make development easier", this project investigates what responsibilities they actually provide.
 
-> **What happens if I remove this feature? What was Spring doing for me, and what code is required to replace it?**
+The application is progressively converted from:
 
-Each change is intentionally incremental so that the effect of each Spring mechanism can be observed and understood.
+```text
+Spring-managed application
+        │
+        ├── Dependency Injection
+        ├── RestTemplate
+        ├── JdbcTemplate
+        ├── Configuration
+        └── Spring MVC / Security
+```
+
+towards explicit Java implementations:
+
+```text
+Explicit Java composition
+        │
+        ├── Manual dependency wiring
+        ├── Apache HttpClient
+        ├── JDBC
+        ├── Explicit configuration
+        └── Remaining Spring infrastructure
+```
+
+Spring is removed **one mechanism at a time**, rather than all at once.
 
 ---
 
-## 🧪 Current Experiment
+## 🌿 Branch Strategy
 
-The project is currently focused on **Dependency Injection and manual object composition**.
+The project is split into two main branches:
 
-Originally, dependencies were managed by Spring:
+### `main`
+
+Contains the original Spring-based version of the payment system.
+
+This branch serves as the **baseline implementation** against which the Spring-removal experiments can be compared.
+
+### `develop-no-spring`
+
+Contains the ongoing experimental work where Spring mechanisms are progressively removed and replaced with explicit Java implementations.
+
+Each Spring-removal experiment is performed on this branch while `main` remains unchanged.
+
+Current progress on `develop-no-spring`:
 
 ```text
-Spring ApplicationContext
-        │
-        ├── PaymentService
-        ├── FraudService
-        ├── StripeIntegration
-        └── ...
+Dependency Injection
+        ↓
+     ✅ Removed
+
+RestTemplate
+        ↓
+     ✅ Removed
+
+JdbcTemplate
+        ↓
+     🔄 Next
+
+@Value / Configuration
+        ↓
+     ⏳ Planned
+
+Spring MVC
+        ↓
+     ⏳ Planned
+
+Spring Security
+        ↓
+     ⏳ Planned
 ```
+---
 
-The experiment progressively replaces this with explicit Java composition:
+## 🔬 Current Status
 
-```text
-ApplicationContainer
-        │
-        ├── StripeSystemContainer
-        │
-        ├── FraudSystemContainer
-        │
-        └── PaymentSystemContainer
-```
+The project has currently completed two major experiments:
 
-For example, instead of Spring discovering and creating `PaymentService`, the application explicitly creates it:
+### ✅ 1. Dependency Injection → Manual Composition
+
+Spring's dependency injection has been removed from the application's service/integration/persistence object graph.
+
+Objects are now explicitly constructed and wired through custom containers.
+
+For example:
 
 ```java
 return new PaymentService(
@@ -60,165 +120,265 @@ return new PaymentService(
 );
 ```
 
-This makes the dependency graph visible in the code.
+The dependency graph is therefore visible directly in the code.
 
----
-
-## 🔬 What Has Been Removed
-
-### `@Service`
-
-Spring-managed services such as:
-
-```java
-@Service
-public class PaymentService {
-    ...
-}
-```
-
-are being converted into regular Java classes.
-
-Their dependencies are now created and wired explicitly by custom containers.
-
-### Dependency Injection
-
-Instead of relying entirely on Spring to resolve dependencies, the project uses explicit composition:
+The current composition is approximately:
 
 ```text
-PaymentSystemContainer
-        │
-        ├── StripeSystemContainer
-        ├── PaymentsDBAccess
-        └── FraudSystemContainer
-```
-
-Each container is responsible for constructing the objects belonging to its part of the system.
-
-### Controller → Service Dependency
-
-The controller no longer directly knows about all the lower-level dependencies.
-
-Instead:
-
-```text
-PaymentController
-        │
-        ▼
 ApplicationContainer
         │
-        ▼
-PaymentService
+        ├── StripeSystemContainer
+        │       └── StripeIntegration
         │
-        ├── StripeIntegration
-        ├── PaymentsDBAccess
-        └── FraudService
+        ├── FraudSystemContainer
+        │       └── FraudService
+        │
+        └── PaymentSystemContainer
+                └── PaymentService
 ```
 
-This is intentionally explicit so the dependency graph can be studied.
+The custom containers are **not intended to replace Spring**.
+
+They exist only to make object creation, ownership and dependencies explicit for the experiment.
 
 ---
 
-## 🔄 Current Spring Usage
+### ✅ 2. `RestTemplate` → Apache HttpClient 5
 
-Spring has **not** been completely removed yet.
+All uses of Spring's `RestTemplate` have been removed from the application.
 
-Some Spring functionality is intentionally kept because the project is being modified incrementally.
+HTTP communication is now performed explicitly using Apache HttpClient 5.
 
-For example, `@Value` is currently still used for configuration:
+For example, Stripe requests are now constructed manually:
+
+```java
+HttpPost httpPost = new HttpPost(stripeInitUrl);
+
+httpPost.setHeader(
+        "Authorization",
+        "Bearer " + stripeSecretKey
+);
+
+httpPost.setHeader(
+        "Content-Type",
+        ContentType.APPLICATION_FORM_URLENCODED.getMimeType()
+);
+
+httpPost.setEntity(
+        new UrlEncodedFormEntity(params)
+);
+```
+
+JSON-based APIs use `StringEntity` together with Jackson when appropriate.
+
+This experiment demonstrates what `RestTemplate` was previously handling for the application, including:
+
+* HTTP request creation
+* HTTP headers
+* request bodies
+* serialization/deserialization
+* execution of HTTP requests
+* response handling
+
+The project currently uses **Apache HttpClient 5** rather than Java's `HttpClient`, intentionally keeping the HTTP implementation compatible with concepts applicable to older Java versions as well.
+
+---
+
+## 🔄 Remaining Spring Usage
+
+Spring has **not** been completely removed.
+
+The project is intentionally being modified incrementally.
+
+Spring is still responsible for infrastructure that has not yet been investigated, including areas such as:
+
+* Spring MVC
+* Spring Security
+* application startup
+* configuration/property resolution
+* `JdbcTemplate`
+
+Some Spring annotations and infrastructure therefore remain in the project.
+
+This is intentional.
+
+---
+
+## 🗺️ Planned Experiments
+
+The experiments are performed incrementally rather than following a strict requirement to remove every Spring feature.
+
+### 1. Dependency Injection → Manual Composition
+
+* Remove Spring-managed application dependencies.
+* Create objects explicitly.
+* Make the dependency graph visible.
+
+**Status: ✅ Complete**
+
+---
+
+### 2. `RestTemplate` → Apache HttpClient 5
+
+* Remove Spring's HTTP abstraction.
+* Construct HTTP requests explicitly.
+* Handle request bodies and responses manually.
+
+**Status: ✅ Complete**
+
+---
+
+### 3. `JdbcTemplate` → JDBC
+
+Next, the persistence layer will be investigated.
+
+The goal is to understand what `JdbcTemplate` provides on top of JDBC and replace it with explicit JDBC code where appropriate.
+
+The experiment will involve concepts such as:
+
+* `Connection`
+* `PreparedStatement`
+* `ResultSet`
+* parameter binding
+* result mapping
+* exception handling
+* resource management
+
+The existing database behaviour should remain unchanged while the abstraction is removed.
+
+**Status: 🔄 Next**
+
+---
+
+### 4. `@Value` → Explicit Configuration
+
+The next configuration experiment will investigate how Spring resolves properties and injects them into objects.
+
+The goal is to replace:
 
 ```java
 @Value("${stripe.secret.key}")
 private String stripeSecretKey;
 ```
 
-This is intentional.
+with explicit configuration loading and constructor-based passing of configuration values.
 
-The next stages will investigate how Spring resolves configuration properties and injects them into objects before removing this mechanism as well.
+**Status: ⏳ Planned**
 
 ---
 
-## 🧱 Custom Containers
+### 5. Spring MVC
 
-The project currently uses a small hierarchy of manual containers:
+After the lower-level mechanisms have been investigated, the project can examine what Spring MVC provides around HTTP endpoints.
 
-```text
-ApplicationContainer
-       │
-       ├── StripeSystemContainer
-       │
-       ├── FraudSystemContainer
-       │
-       └── PaymentSystemContainer
-```
+Possible areas of investigation include:
 
-These classes are not intended to replace Spring as a framework.
+* controller registration
+* request mapping
+* request deserialization
+* response serialization
+* exception handling
+* HTTP status handling
 
-They exist to make dependency creation and ownership explicit during the experiment.
+**Status: ⏳ Planned**
+
+---
+
+### 6. Spring Security
+
+The security layer can then be investigated separately to understand what Spring Security provides around:
+
+* authentication
+* authorization
+* filters
+* security context
+* request processing
+
+**Status: ⏳ Planned**
+
+---
+
+### 7. Spring Application Context / Bootstrap
+
+Finally, the remaining Spring application lifecycle and infrastructure can be examined.
+
+The goal is not necessarily to remove Spring completely.
+
+Instead, the project should reach a point where it is clear:
+
+> **Which parts of the application actually need Spring, and what responsibilities does Spring provide for each remaining part?**
+
+**Status: ⏳ Planned**
 
 ---
 
 ## 🧪 Testing
 
-The project also updates its tests as the dependency graph changes.
+Tests are updated together with each experiment.
 
-For example, after removing the controller's direct knowledge of Stripe and Fraud dependencies, the controller test no longer mocks those internal dependencies.
+The project currently demonstrates several testing approaches:
 
-Instead, it tests the controller boundary:
-
-```text
-PaymentController
-        │
-        ▼
-ApplicationContainer
-        │
-        ▼
-PaymentService
-```
-
-Integration tests continue to use Spring where the experiment has not removed it yet.
-
-This allows the project to demonstrate the difference between:
-
-* Spring-managed integration tests
+* JUnit 5 unit tests
+* Mockito-based tests
+* Spring MVC tests
+* integration tests
 * manually constructed objects
-* Mockito-based unit tests
 * explicit dependency composition
+
+When a Spring abstraction is removed, the corresponding tests are also adapted to test the new implementation rather than preserving the old abstraction artificially.
+
+For example, after replacing `RestTemplate`, HTTP integration tests use the Apache HttpClient abstraction instead.
+
+The intention is to keep the behaviour of the application unchanged while changing the mechanism underneath it.
 
 ---
 
-## 🗺️ Planned Experiments
+## 🗄️ Database
 
-The project will progressively remove additional Spring mechanisms.
+The application uses:
 
-### 1. `@Service` → Manual Composition
+* MySQL
+* Flyway
+* JDBC infrastructure
+* Spring `JdbcTemplate` — currently, and scheduled for removal
 
-* Remove service discovery.
-* Create services explicitly.
-* Understand what the Spring container normally does.
+Database migrations are managed through Flyway.
 
-### 2. `@Component` → Manual Application Bootstrap
+The database is also used in the Docker-based development and CI environments.
 
-* Remove the need for `ApplicationContainer` to be a Spring bean.
-* Move object composition outside the Spring ApplicationContext.
+---
 
-### 3. `@Value` → Explicit Configuration
+## 🐳 Docker & CI
 
-* Remove property injection.
-* Load configuration explicitly.
-* Pass configuration values through constructors.
+The project includes Docker-based infrastructure for:
 
-### 4. Further Dependency Injection
+* MySQL
+* Flyway migrations
+* the Python fraud-detection service
 
-* Identify remaining Spring-managed dependencies.
-* Replace implicit dependency resolution with explicit composition where appropriate.
+GitHub Actions is used for CI.
 
-### 5. Application Context
+The CI pipeline currently performs:
 
-* Understand what responsibilities remain with Spring.
-* Identify which parts of the application actually require the framework.
+```text
+Checkout
+   ↓
+Fraud detection image
+   ↓
+Fraud detection container
+   ↓
+MySQL service
+   ↓
+Flyway migrations
+   ↓
+Database schema validation
+   ↓
+Maven build
+   ↓
+Tests
+```
 
-The project will stop removing Spring features once the experiment has provided enough understanding of the mechanisms being studied.
+The goal is to keep the CI pipeline working throughout each Spring-removal experiment.
 
 ---
 
@@ -229,6 +389,8 @@ The project will stop removing Spring features once the experiment has provided 
 * Maven
 * JUnit 5
 * Mockito
+* Apache HttpClient 5
+* Jackson
 * MySQL
 * Flyway
 * Docker
@@ -242,6 +404,38 @@ The project will stop removing Spring features once the experiment has provided 
 
 **Work in progress.**
 
-This repository represents an ongoing learning experiment. The code will intentionally change as different Spring mechanisms are removed and replaced with explicit Java implementations.
+Current progress:
 
-The final result is less important than understanding **why the application works with Spring in the first place**.
+```text
+Dependency Injection
+        ↓
+     ✅ Removed
+
+RestTemplate
+        ↓
+     ✅ Removed
+
+JdbcTemplate
+        ↓
+     🔄 Next
+
+@Value / Configuration
+        ↓
+     ⏳ Planned
+
+Spring MVC
+        ↓
+     ⏳ Planned
+
+Spring Security
+        ↓
+     ⏳ Planned
+
+Application Context / Bootstrap
+        ↓
+     ⏳ Planned
+```
+
+The final result is less important than the process.
+
+The purpose of the project is to understand **why the application works with Spring in the first place, what Spring provides at each layer, and what changes when those abstractions are removed.**
