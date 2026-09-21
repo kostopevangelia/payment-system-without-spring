@@ -23,6 +23,7 @@ import java.io.IOException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -81,9 +82,19 @@ class StripeIntegrationTest {
         when(httpClient.execute(
                 any(HttpPost.class),
                 any(HttpClientResponseHandler.class))
-        ).thenReturn(null);
+        ).thenAnswer(invocation -> {
+            HttpClientResponseHandler<?> handler =
+                    invocation.getArgument(1);
+
+            return handler.handleResponse(null);
+        });
 
         assertThrows(CustomException.class, () -> stripeIntegration.initPayment(request, "txn"));
+
+        verify(httpClient).execute(
+                any(HttpPost.class),
+                any(HttpClientResponseHandler.class)
+        );
     }
 
     @Test
