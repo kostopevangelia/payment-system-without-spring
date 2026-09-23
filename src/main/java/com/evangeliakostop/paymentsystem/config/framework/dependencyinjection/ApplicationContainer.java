@@ -1,15 +1,15 @@
 package com.evangeliakostop.paymentsystem.config.framework.dependencyinjection;
 
 import com.evangeliakostop.paymentsystem.config.framework.config.ApplicationConfig;
-import com.evangeliakostop.paymentsystem.config.jdbc.JdbcTemplateConfig;
+import com.evangeliakostop.paymentsystem.config.jdbc.JdbcConfig;
 import com.evangeliakostop.paymentsystem.config.rest.CorrelationIdInterceptor;
 import com.evangeliakostop.paymentsystem.config.rest.RestConfig;
 import com.evangeliakostop.paymentsystem.persistence.PaymentsDBAccess;
 import com.evangeliakostop.paymentsystem.services.PaymentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zaxxer.hikari.HikariDataSource;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.io.IOException;
 
@@ -22,8 +22,9 @@ public class ApplicationContainer {
     public ApplicationContainer() throws IOException {
 
         ApplicationConfig config = ApplicationConfig.load();
-        JdbcTemplate jdbcTemplate = JdbcTemplateConfig.createJdbcTemplate(config);
-        PaymentsDBAccess paymentsDBAccess = new PaymentsDBAccess(jdbcTemplate);
+
+        HikariDataSource dataSource = JdbcConfig.createDataSource(config);
+        PaymentsDBAccess paymentsDBAccess = new PaymentsDBAccess(dataSource);
 
         CorrelationIdInterceptor correlationIdInterceptor =
                 new CorrelationIdInterceptor();

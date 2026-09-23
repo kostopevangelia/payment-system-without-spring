@@ -4,28 +4,38 @@ import com.evangeliakostop.paymentsystem.common.utils.enumeration.ErrorLevelEnum
 import com.evangeliakostop.paymentsystem.common.utils.enumeration.PaymentStatus;
 import com.evangeliakostop.paymentsystem.common.utils.enumeration.TransactionType;
 import com.evangeliakostop.paymentsystem.exceptions.CustomException;
+import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Repository;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 @Slf4j
 public class PaymentsDBAccess {
 
-    private final JdbcTemplate paymentsDbTemplate;
+    private final HikariDataSource dataSource;
 
-    public PaymentsDBAccess(JdbcTemplate paymentsDbTemplate) {
-        this.paymentsDbTemplate = paymentsDbTemplate;
+    public PaymentsDBAccess(HikariDataSource dataSource) {
+        this.dataSource = dataSource;
     }
 
     public void insertInitTransaction(String transactionId, TransactionType transactionType, Long amount, String currency) {
 
         log.info("Method insertInitTransaction entered for transactionId: {}", transactionId);
 
-        try {
-            paymentsDbTemplate.update(SqlStatements.INSERT_TRANSACTION, transactionId, PaymentStatus.REQUIRES_PAYMENT_METHOD.getDescription(), transactionType.getDescription(), amount, transactionType.equals(TransactionType.REFUND) ? amount : 0.0, currency);
-        } catch (DataAccessException e) {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(SqlStatements.INSERT_TRANSACTION)) {
+
+            statement.setString(1, transactionId);
+            statement.setString(2, PaymentStatus.REQUIRES_PAYMENT_METHOD.getDescription());
+            statement.setString(3, transactionType.getDescription());
+            statement.setLong(4, amount);
+            statement.setDouble(5, transactionType.equals(TransactionType.REFUND) ? amount : 0.0);
+            statement.setString(6, currency);
+
+            statement.executeUpdate();
+        } catch (SQLException e) {
             log.error("Method insertInitTransaction - Exception: {}", e.getMessage());
             throw new CustomException(
                     "PaymentsDBAccess - error",
