@@ -10,7 +10,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 
