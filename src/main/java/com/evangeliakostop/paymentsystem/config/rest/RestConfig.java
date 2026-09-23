@@ -12,6 +12,10 @@ public class RestConfig {
 
     private final CorrelationIdInterceptor correlationIdInterceptor;
 
+    public RestConfig(CorrelationIdInterceptor correlationIdInterceptor) {
+        this.correlationIdInterceptor = correlationIdInterceptor;
+    }
+
     public RequestConfig createRequestConfig() {
         return RequestConfig.custom()
                 .setConnectionRequestTimeout(Timeout.ofMilliseconds(5000))
@@ -24,9 +28,5 @@ public class RestConfig {
                 .setConnectionManager(new PoolingHttpClientConnectionManager())
                 .setDefaultRequestConfig(requestConfig)
                 .build();
-    }
-
-    public RestConfig(CorrelationIdInterceptor correlationIdInterceptor) {
-        this.correlationIdInterceptor = correlationIdInterceptor;
     }
 }
